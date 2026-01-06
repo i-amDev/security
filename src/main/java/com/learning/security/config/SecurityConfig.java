@@ -3,7 +3,9 @@ package com.learning.security.config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -29,8 +31,11 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) {
-        httpSecurity.authorizeHttpRequests(requests ->
-                requests.requestMatchers("/admin/**").hasRole("ADMIN")
+        httpSecurity
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(requests ->
+                requests.requestMatchers("/signin/**").permitAll()
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/user/**").hasAnyRole("USER", "ADMIN")
                         .anyRequest().authenticated());
         httpSecurity.httpBasic(Customizer.withDefaults());
@@ -62,11 +67,24 @@ public class SecurityConfig {
 //        return new InMemoryUserDetailsManager(user1, user2, admin);
 
         JdbcUserDetailsManager jdbcUserDetailsManager = new JdbcUserDetailsManager(dataSource);
-        jdbcUserDetailsManager.createUser(user1);
-        jdbcUserDetailsManager.createUser(user2);
-        jdbcUserDetailsManager.createUser(admin);
+        if (!jdbcUserDetailsManager.userExists(user1.getUsername())) {
+            jdbcUserDetailsManager.createUser(user1);
+        }
+
+        if (!jdbcUserDetailsManager.userExists(user2.getUsername())) {
+            jdbcUserDetailsManager.createUser(user2);
+        }
+
+        if (!jdbcUserDetailsManager.userExists(admin.getUsername())) {
+            jdbcUserDetailsManager.createUser(admin);
+        }
 
         return jdbcUserDetailsManager;
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) {
+        return authenticationConfiguration.getAuthenticationManager();
     }
 
 }
